@@ -1,0 +1,22 @@
+{
+  "name": "sweikenb/pcntl",
+  "description": "PCNTL process control library",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Simon Schröer",
+      "email": "code@schroeer.me"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Sweikenb\\Library\\Pcntl\\": "src"
+    }
+  },
+  "require": {
+    "php": "^7.2",
+    "ext-pcntl": "*",
+    "ext-posix": "*"
+  }
+}
