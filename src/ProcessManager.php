@@ -6,11 +6,18 @@ use Sweikenb\Library\Pcntl\Api\ChildProcessInterface;
 use Sweikenb\Library\Pcntl\Api\ParentProcessInterface;
 use Sweikenb\Library\Pcntl\Api\ProcessFactoryInterface;
 use Sweikenb\Library\Pcntl\Api\ProcessManagerInterface;
+use Sweikenb\Library\Pcntl\Event\ProcessManagerEvent;
 use Sweikenb\Library\Pcntl\Exception\ProcessException;
 use Sweikenb\Library\Pcntl\Factory\ProcessFactory;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class ProcessManager implements ProcessManagerInterface
 {
+    const EVENT_FORK_FAILED = 'process.manager.fork.failed';
+    const EVENT_CHILD_CREATED = 'process.manager.child.created';
+    const EVENT_CHILD_EXIT = 'process.manager.child.exit';
+    const EVENT_CHILD_SEND_KILL = 'process.manager.child.send.kill';
+
     const PROPAGATE_SIGNALS = [
         SIGTERM,
         SIGHUP,
@@ -18,6 +25,7 @@ class ProcessManager implements ProcessManagerInterface
         SIGALRM,
     ];
 
+    private ?EventDispatcherInterface $eventDispatcher = null;
     private ProcessFactoryInterface $processFactory;
     private ParentProcessInterface $mainProcess;
     private array $childProcesses = [];
@@ -68,6 +76,7 @@ class ProcessManager implements ProcessManagerInterface
                                 "[PCNTL ProcessManager] Forcing child process exit for pid %s\n",
                                 $childProcess->getId()
                             );
+                            $this->dispatchEvent(self::EVENT_CHILD_SEND_KILL, $childProcess->getId());
                             @posix_kill($childProcess->getId(), SIGKILL);
                         }
                         $this->wait();
@@ -78,6 +87,19 @@ class ProcessManager implements ProcessManagerInterface
                 }
             }
         );
+    }
+
+    public function setEventDispatcher(EventDispatcherInterface $eventDispatcher): void
+    {
+        $this->eventDispatcher = $eventDispatcher;
+    }
+
+    private function dispatchEvent(string $name, ?int $pid = null): void
+    {
+        if ($this->eventDispatcher) {
+            $event = new ProcessManagerEvent($name, $pid);
+            $this->eventDispatcher->dispatch($event, $name);
+        }
     }
 
     public function getMainProcess(): ParentProcessInterface
@@ -97,6 +119,7 @@ class ProcessManager implements ProcessManagerInterface
 
         // error
         if ($pid < 0) {
+            $this->dispatchEvent(self::EVENT_FORK_FAILED);
             throw new ProcessException('Forking failed.');
         }
 
@@ -104,6 +127,7 @@ class ProcessManager implements ProcessManagerInterface
         if ($pid > 0) {
             $childProcess = $this->processFactory->createChildProcess($pid);
             $this->childProcesses[$pid] = $childProcess;
+            $this->dispatchEvent(self::EVENT_CHILD_CREATED, $pid);
 
             return $childProcess;
         }
@@ -130,6 +154,7 @@ class ProcessManager implements ProcessManagerInterface
                 $pid = pcntl_wait($status);
                 if (isset($this->childProcesses[$pid])) {
                     unset($this->childProcesses[$pid]);
+                    $this->dispatchEvent(self::EVENT_CHILD_EXIT, $pid);
                     if (null !== $callback) {
                         call_user_func($callback, $status, $pid);
                     }

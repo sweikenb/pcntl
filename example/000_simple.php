@@ -2,11 +2,23 @@
 
 use Sweikenb\Library\Pcntl\Api\ChildProcessInterface;
 use Sweikenb\Library\Pcntl\Api\ParentProcessInterface;
+use Sweikenb\Library\Pcntl\Event\ProcessManagerEvent;
 use Sweikenb\Library\Pcntl\ProcessManager;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 require __DIR__ . '/../vendor/autoload.php';
 
 $pm = new ProcessManager();
+if (class_exists(EventDispatcher::class)) {
+    /*
+     * Register events in case the Symfony EventDispatcher is available
+     */
+    $eventManager = new EventDispatcher();
+    $eventManager->addListener(ProcessManager::EVENT_CHILD_CREATED, function (ProcessManagerEvent $event) {
+        echo sprintf("[EVENT CALLBACK] Child created: %d\n", $event->getProcessId());
+    });
+    $pm->setEventDispatcher($eventManager);
+}
 
 $childA = $pm->runProcess(
     function (ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess) {
@@ -33,7 +45,7 @@ $childD = $pm->runProcess(
     }
 );
 
-echo "Main Process knows the following childs:\n";
+echo "Main Process knows the following children:\n";
 echo sprintf(">> A: %s\n", $childA->getId());
 echo sprintf(">> B: %s\n", $childB->getId());
 echo sprintf(">> C: %s\n", $childC->getId());

@@ -14,6 +14,9 @@
         "ext-pcntl": "*",
         "ext-posix": "*"
     },
+    "suggest": {
+        "symfony/event-dispatcher": "If you want to add events, you can use the symfony event dispatcher."
+    },
     "autoload": {
         "psr-4": {
             "Sweikenb\\Library\\Pcntl\\": "src"
