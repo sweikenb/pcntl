@@ -7,7 +7,7 @@ Simple and easy to use process manager for PHP based on default PCNTL and POSIX 
 You can install this library by [composer](https://getcomposer.org/):
 
 ```bash
-composer require "sweikenb/pcntl":"^2.0"
+composer require sweikenb/pcntl
 ```
 
 ## Usage
