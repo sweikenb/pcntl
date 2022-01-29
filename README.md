@@ -2,28 +2,33 @@
 
 Simple and easy to use process manager for PHP based on default PCNTL and POSIX functions.
 
-
 ## Installation
 
 You can install this library by [composer](https://getcomposer.org/):
 
 ```bash
-composer require "sweikenb/pcntl":"^1.0"
+composer require "sweikenb/pcntl":"^2.0"
 ```
-
 
 ## Usage
 
-You can just create an instance of `\Sweikenb\Library\Pcntl\ProcessManager` and create a process-fork by calling `runProcess()`.
+You can just create an instance of `\Sweikenb\Library\Pcntl\ProcessManager` and create a process-fork by
+calling `runProcess()`.
 
-The manager will handle the rest and makes shure all process will be terminated properly. It will also make shure that the major system signals will be propagated to the child processes aswell. In case you want to define your own set of signlas you want to propagate to the childs, you cann add an array with the signales as second argument to the constructor.
+The manager will handle the rest and makes sure all process will be terminated properly. It will also make shure that
+the major system signals will be propagated to the child processes as well. In case you want to define your own set of
+signals you want to propagate to the children, you can add an array with the signals as second argument to the
+constructor.
 
 **Process flow**
 
-You can _(but you do not have to)_ use the `wait()` method to wait for previously created childs. The method can be calles multiple times and allows a very flexible process-flow handling.
+You can _(but you do not have to)_ use the `wait()` method to wait for previously created children. The method can be
+called multiple times and allows a very flexible process-flow handling.
 
-Also, to make shure the childs are terminated, the process-manager will install a shutdown-function wich will call the `wait()` method automatically at the end of the script. If you do not want this functionality, just pass `false` as first argument to the constructor to disable the shutdown handler. If you disable this feature, the process manager will force a child termination even if they aren't finished yet and exits with status-code `125`.
-
+Also, to make sure the children are terminated, the process-manager will install a shutdown-function which will call
+the `wait()` method automatically at the end of the script. If you do not want this functionality, just pass `false` as
+first argument to the constructor to disable the shutdown handler. If you disable this feature, the process manager will
+force a child termination even if they aren't finished yet and exits with status-code `125`.
 
 ## Example
 
@@ -87,4 +92,4 @@ D
 --> All Work done!
 ```
 
-More examples can be found in the [examples](./examples) folder.
+More examples can be found in the [example](./example) folder.

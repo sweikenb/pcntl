@@ -1,5 +1,4 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 use Sweikenb\Library\Pcntl\Api\ChildProcessInterface;
 use Sweikenb\Library\Pcntl\Api\ParentProcessInterface;
@@ -11,25 +10,25 @@ $pm = new ProcessManager();
 
 $childA = $pm->runProcess(
     function (ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess) {
-        sleep(5);
+        sleep(mt_rand(1, 10));
         echo "Hallo from child A\n";
     }
 );
 $childB = $pm->runProcess(
     function (ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess) {
-        sleep(3);
+        sleep(mt_rand(1, 10));
         echo "Hallo from child B\n";
     }
 );
 $childC = $pm->runProcess(
     function (ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess) {
-        sleep(6);
+        sleep(mt_rand(1, 10));
         echo "Hallo from child C\n";
     }
 );
 $childD = $pm->runProcess(
     function (ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess) {
-        sleep(4);
+        sleep(mt_rand(1, 10));
         echo "Hallo from child D\n";
     }
 );
@@ -40,9 +39,8 @@ echo sprintf(">> B: %s\n", $childB->getId());
 echo sprintf(">> C: %s\n", $childC->getId());
 echo sprintf(">> D: %s\n", $childD->getId());
 
-
 // HINT
-// just  $pm->wait();  without any callback would work aswell
+// just  $pm->wait();  without any callback would work as well
 $pm->wait(
     function (int $status, int $pid) {
         echo sprintf("The child with PID %s exited with status %s\n", $pid, $status);

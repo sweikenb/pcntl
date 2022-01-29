@@ -1,5 +1,4 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Sweikenb\Library\Pcntl;
 
@@ -12,39 +11,18 @@ use Sweikenb\Library\Pcntl\Factory\ProcessFactory;
 
 class ProcessManager implements ProcessManagerInterface
 {
-    /**
-     * @var int[]
-     */
-    private const PROPAGATE_SIGNALS = [
+    const PROPAGATE_SIGNALS = [
         SIGTERM,
         SIGHUP,
         SIGUSR1,
         SIGALRM,
     ];
-    /**
-     * @var \Sweikenb\Library\Pcntl\Api\ProcessFactoryInterface
-     */
-    private $processFactory;
-    /**
-     * @var \Sweikenb\Library\Pcntl\Api\ParentProcessInterface;
-     */
-    private $mainProcess;
-    /**
-     * @var \Sweikenb\Library\Pcntl\Api\ProcessInterface[]
-     */
-    private $childProcesses = [];
-    /**
-     * @var bool
-     */
-    private $isChildProcess = false;
 
-    /**
-     * ProcessManager constructor.
-     *
-     * @param bool $autoWait
-     * @param array|null $propagateSignals
-     * @param \Sweikenb\Library\Pcntl\Api\ProcessFactoryInterface|null $processFactory
-     */
+    private ProcessFactoryInterface $processFactory;
+    private ParentProcessInterface $mainProcess;
+    private array $childProcesses = [];
+    private bool $isChildProcess = false;
+
     public function __construct(
         bool $autoWait = true,
         array $propagateSignals = null,
@@ -82,7 +60,8 @@ class ProcessManager implements ProcessManagerInterface
             function () use ($autoWait) {
                 if ($autoWait) {
                     $this->wait();
-                } else {
+                }
+                else {
                     if (!empty($this->childProcesses)) {
                         foreach ($this->childProcesses as $childProcess) {
                             echo sprintf(
@@ -101,17 +80,11 @@ class ProcessManager implements ProcessManagerInterface
         );
     }
 
-    /**
-     * @inheritDoc
-     */
     public function getMainProcess(): ParentProcessInterface
     {
         return $this->mainProcess;
     }
 
-    /**
-     * @inheritDoc
-     */
     public function runProcess(callable $callback): ChildProcessInterface
     {
         // multi-level process-nesting is not supported (and not recommended!)
@@ -144,15 +117,13 @@ class ProcessManager implements ProcessManagerInterface
                 $this->processFactory->createChildProcess(posix_getpid()),
                 $this->getMainProcess()
             );
-        } finally {
+        }
+        finally {
             exit(0);
         }
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function wait(callable $callback = null): ProcessManagerInterface
+    public function wait(?callable $callback = null): ProcessManagerInterface
     {
         if (!$this->isChildProcess) {
             while (!empty($this->childProcesses)) {

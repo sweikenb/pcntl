@@ -1,22 +1,22 @@
 {
-  "name": "sweikenb/pcntl",
-  "description": "PCNTL process control library",
-  "type": "library",
-  "license": "MIT",
-  "authors": [
-    {
-      "name": "Simon Schröer",
-      "email": "code@schroeer.me"
+    "name": "sweikenb/pcntl",
+    "description": "PCNTL process control library",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Simon Schröer",
+            "email": "code@sweikenb.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "ext-pcntl": "*",
+        "ext-posix": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Sweikenb\\Library\\Pcntl\\": "src"
+        }
     }
-  ],
-  "autoload": {
-    "psr-4": {
-      "Sweikenb\\Library\\Pcntl\\": "src"
-    }
-  },
-  "require": {
-    "php": "^7.2",
-    "ext-pcntl": "*",
-    "ext-posix": "*"
-  }
 }
