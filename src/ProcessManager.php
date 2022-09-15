@@ -28,6 +28,10 @@ class ProcessManager implements ProcessManagerInterface
     private ?EventDispatcherInterface $eventDispatcher = null;
     private ProcessFactoryInterface $processFactory;
     private ParentProcessInterface $mainProcess;
+
+    /**
+     * @var array<int, ChildProcessInterface>
+     */
     private array $childProcesses = [];
     private bool $isChildProcess = false;
 
@@ -43,7 +47,7 @@ class ProcessManager implements ProcessManagerInterface
         $this->processFactory = $processFactory;
 
         // create an instance for the current (parent) process
-        $this->mainProcess = $this->processFactory->createParentProcess(posix_getpid());
+        $this->mainProcess = $this->processFactory->createParentProcess(posix_getpid(), null);
 
         // any special signals that should be handled?
         $propagateSignals = empty($propagateSignals)
@@ -68,8 +72,7 @@ class ProcessManager implements ProcessManagerInterface
             function () use ($autoWait) {
                 if ($autoWait) {
                     $this->wait();
-                }
-                else {
+                } else {
                     if (!empty($this->childProcesses)) {
                         foreach ($this->childProcesses as $childProcess) {
                             echo sprintf(
@@ -114,6 +117,12 @@ class ProcessManager implements ProcessManagerInterface
             throw new ProcessException('Multi-level process-nesting not supported.');
         }
 
+        // create IPC sockets
+        $ipc = [];
+        if (socket_create_pair(AF_UNIX, SOCK_STREAM, 0, $ipc) === false) {
+            throw new ProcessException(socket_strerror(socket_last_error()));
+        }
+
         // fork now
         $pid = pcntl_fork();
 
@@ -125,7 +134,8 @@ class ProcessManager implements ProcessManagerInterface
 
         // we are the parent
         if ($pid > 0) {
-            $childProcess = $this->processFactory->createChildProcess($pid);
+            @socket_close($ipc[0]);
+            $childProcess = $this->processFactory->createChildProcess($pid, $ipc[1]);
             $this->childProcesses[$pid] = $childProcess;
             $this->dispatchEvent(self::EVENT_CHILD_CREATED, $pid);
 
@@ -134,15 +144,16 @@ class ProcessManager implements ProcessManagerInterface
 
         // we are the child
         try {
+            @socket_close($ipc[1]);
             $this->childProcesses = [];
             $this->isChildProcess = true;
             call_user_func(
                 $callback,
-                $this->processFactory->createChildProcess(posix_getpid()),
-                $this->getMainProcess()
+                $this->processFactory->createChildProcess(posix_getpid(), null),
+                $this->getMainProcess()->setIpcSocket($ipc[0])
             );
-        }
-        finally {
+        } finally {
+            @socket_close($ipc[0]);
             exit(0);
         }
     }
@@ -153,7 +164,12 @@ class ProcessManager implements ProcessManagerInterface
             while (!empty($this->childProcesses)) {
                 $pid = pcntl_wait($status);
                 if (isset($this->childProcesses[$pid])) {
+                    // close IPC socket
+                    $childProcess = $this->childProcesses[$pid];
+                    @socket_close($childProcess->getIpcSocket());
                     unset($this->childProcesses[$pid]);
+
+                    // dispatch event and trigger callback if present
                     $this->dispatchEvent(self::EVENT_CHILD_EXIT, $pid);
                     if (null !== $callback) {
                         call_user_func($callback, $status, $pid);
