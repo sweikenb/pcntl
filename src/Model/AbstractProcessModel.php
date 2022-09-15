@@ -17,8 +17,11 @@ abstract class AbstractProcessModel implements ProcessInterface
 
     public function __destruct()
     {
-        @socket_close($this->ipcSocket);
-        $this->ipcSocket = null;
+        if ($this->ipcSocket) {
+            @socket_shutdown($this->ipcSocket);
+            @socket_close($this->ipcSocket);
+            $this->ipcSocket = null;
+        }
     }
 
     public function getId(): int

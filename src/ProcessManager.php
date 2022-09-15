@@ -41,10 +41,7 @@ class ProcessManager implements ProcessManagerInterface
         ?ProcessFactoryInterface $processFactory = null
     ) {
         // make sure we have a proper factory, if non is provided, use the one that comes with the library
-        if (!$processFactory) {
-            $processFactory = new ProcessFactory();
-        }
-        $this->processFactory = $processFactory;
+        $this->processFactory = $processFactory ?? new ProcessFactory();
 
         // create an instance for the current (parent) process
         $this->mainProcess = $this->processFactory->createParentProcess(posix_getpid(), null);
@@ -153,7 +150,6 @@ class ProcessManager implements ProcessManagerInterface
                 $this->getMainProcess()->setIpcSocket($ipc[0])
             );
         } finally {
-            @socket_close($ipc[0]);
             exit(0);
         }
     }
@@ -164,9 +160,6 @@ class ProcessManager implements ProcessManagerInterface
             while (!empty($this->childProcesses)) {
                 $pid = pcntl_wait($status);
                 if (isset($this->childProcesses[$pid])) {
-                    // close IPC socket
-                    $childProcess = $this->childProcesses[$pid];
-                    @socket_close($childProcess->getIpcSocket());
                     unset($this->childProcesses[$pid]);
 
                     // dispatch event and trigger callback if present
