@@ -22,25 +22,25 @@ if (class_exists(EventDispatcher::class)) {
 
 $childA = $pm->runProcess(
     function (ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess) {
-        sleep(mt_rand(1, 10));
+        sleep(mt_rand(1, 3));
         echo "Hallo from child A\n";
     }
 );
 $childB = $pm->runProcess(
     function (ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess) {
-        sleep(mt_rand(1, 10));
+        sleep(mt_rand(1, 3));
         echo "Hallo from child B\n";
     }
 );
 $childC = $pm->runProcess(
     function (ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess) {
-        sleep(mt_rand(1, 10));
+        sleep(mt_rand(1, 3));
         echo "Hallo from child C\n";
     }
 );
 $childD = $pm->runProcess(
     function (ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess) {
-        sleep(mt_rand(1, 10));
+        sleep(mt_rand(1, 3));
         echo "Hallo from child D\n";
     }
 );

@@ -15,7 +15,7 @@ composer require sweikenb/pcntl
 You can just create an instance of `\Sweikenb\Library\Pcntl\ProcessManager` and create a process-fork by
 calling `runProcess()`.
 
-The manager will handle the rest and makes sure all process will be terminated properly. It will also make shure that
+The manager will handle the rest and makes sure all process will be terminated properly. It will also make sure that
 the major system signals will be propagated to the child processes as well. In case you want to define your own set of
 signals you want to propagate to the children, you can add an array with the signals as second argument to the
 constructor.
@@ -57,6 +57,70 @@ The following events are thrown:
 | process.manager.child.created   | Fork was created successfully.             |
 | process.manager.child.exit      | A child has exited.                        |
 | process.manager.child.send.kill | A kill signal was sent to a child process. |
+
+## Inter Process Communication
+
+You can send data between the parent and child process using messages.
+
+The data gets send by sockets and can be anything that can be encoded using `serialize()`:
+
+```php
+<?php
+
+use Sweikenb\Library\Pcntl\Api\ChildProcessInterface;
+use Sweikenb\Library\Pcntl\Api\ParentProcessInterface;
+use Sweikenb\Library\Pcntl\ProcessManager;
+use Sweikenb\Library\Pcntl\Model\Ipc\MessageModel;
+
+require "./vendor/autoload.php";
+
+$pm = new ProcessManager();
+
+$child = $pm->runProcess(function(ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess){
+    $message = $parentProcess->getNextMessage(true);
+    if ($message) {
+        // Process message here ...
+        fwrite(
+            STDOUT,
+            fprintf('Got a message from the parent process: %s - %s', $message->getTopic(), $message->getPayload())
+        );
+    }
+    $parentProcess->sendMessage(new MessageModel('some_response', 'hello parent'));
+});
+
+$child->sendMessage(new MessageModel('some_topic', 'hello child'));
+
+// wait and cleanup
+sleep(3);
+$child->kill();
+```
+
+## Process Pool & Worker Processes
+
+You can also distribute workload across multiple worker to work in parallel. The actual work must be placed inside a
+class that is invokable _(`__invoke`)_ and must not have a constructor.
+
+```php
+<?php
+
+use ExampleWorkerService;
+use Sweikenb\Library\Pcntl\Factory\WorkerMessageFactory;
+use Sweikenb\Library\Pcntl\ProcessPool;
+
+require "./vendor/autoload.php";
+$messageFactory = new WorkerMessageFactory();
+
+$numberOfWorkers = 4;
+$pool = new ProcessPool($numberOfWorkers);
+
+for($i = 0; $i < 100; $i++) {
+    $pool->sendMessage($messageFactory->create('some_topic', ExampleWorkerService::class));
+}
+
+// wait and cleanup
+sleep(5);
+$pool->killAll();
+```
 
 ## Example
 

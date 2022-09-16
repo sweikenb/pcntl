@@ -6,6 +6,8 @@ use Sweikenb\Library\Pcntl\Api\ChildProcessInterface;
 
 class ChildProcessModel extends AbstractProcessModel implements ChildProcessInterface
 {
-    // The library provides different classes for parent and child to make programming more expressive.
-    // Basically you could create just one model which implements all interfaces and achieve the same results.
+    public function kill(): void
+    {
+        @posix_kill($this->getId(), SIGKILL);
+    }
 }
