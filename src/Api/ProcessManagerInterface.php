@@ -2,6 +2,8 @@
 
 namespace Sweikenb\Library\Pcntl\Api;
 
+use Sweikenb\Library\Pcntl\Exception\ProcessException;
+
 interface ProcessManagerInterface
 {
     /**
@@ -12,7 +14,7 @@ interface ProcessManagerInterface
     /**
      * Executes the provided callback within a child process and does not wait for it to finish.
      *
-     * @throws \Sweikenb\Library\Pcntl\Exception\ProcessException
+     * @throws ProcessException
      */
     public function runProcess(callable $callback): ChildProcessInterface;
 

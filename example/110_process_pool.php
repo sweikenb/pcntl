@@ -13,16 +13,13 @@ $factory = new WorkerMessageFactory();
 $pool = new ProcessPool($numWorker);
 for ($i = 0; $i < $numMessages; $i++) {
     $pool->sendMessage(
-        $factory->create(
-            'hello_world',
-            ExampleWorkerService::class
-        )
+        $factory->create('hello_world', ExampleWorkerService::class)
     );
 }
 
 // Give the workers some time to work.
 // Usually you would send messages in some kid of event/endless-loop and/or with some custom unblock logic.
-sleep(5);
+sleep(3);
 
 // Work done, kill all workers!
 // HINT: if you skipp this kill, the main process and its worker will run infinitely

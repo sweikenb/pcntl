@@ -7,9 +7,10 @@ use Symfony\Contracts\EventDispatcher\Event;
 class ProcessManagerEvent extends Event
 {
     public function __construct(
-        private string $eventName,
-        private ?int $processId = null
-    ) {}
+        private readonly string $eventName,
+        private readonly ?int $processId = null
+    ) {
+    }
 
     public function getEventName(): string
     {

@@ -7,6 +7,12 @@ class ExampleWorkerService
 {
     public function __invoke(ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess): void
     {
-        fwrite(STDOUT, sprintf("Hello world message handled by worker #%d\n", $childProcess->getId()));
+        fwrite(
+            STDOUT,
+            sprintf(
+                "Hello world message handled by worker #%s\n",
+                $childProcess->getId()
+            )
+        );
     }
 }
