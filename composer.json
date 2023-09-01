@@ -10,13 +10,13 @@
         }
     ],
     "require": {
-        "php": "^8.1 | ^8.2",
+        "php": ">=8.2",
         "ext-pcntl": "*",
         "ext-posix": "*",
         "ext-sockets": "*"
     },
-    "suggest": {
-        "symfony/event-dispatcher": "If you want to add events, you can use the symfony event dispatcher."
+    "conflict": {
+        "ext-grpc": "*"
     },
     "autoload": {
         "psr-4": {

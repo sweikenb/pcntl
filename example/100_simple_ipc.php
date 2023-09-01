@@ -70,6 +70,6 @@ foreach ($workers as $i => $worker) {
     }
 
     // stop the worker process
-    fwrite(STDOUT, sprintf('# Stopping worker (%d)', $worker->getId()));
+    fwrite(STDOUT, sprintf("# Stopping worker (%d)\n", $worker->getId()));
     $worker->kill();
 }

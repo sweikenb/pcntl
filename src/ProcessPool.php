@@ -13,17 +13,15 @@ use Sweikenb\Library\Pcntl\Api\ProcessManagerInterface;
 use Sweikenb\Library\Pcntl\Api\ProcessPoolInterface;
 use Sweikenb\Library\Pcntl\Exception\ProcessException;
 use Sweikenb\Library\Pcntl\Strategies\RoundRobinWorkerSelectionStrategy;
+use Throwable;
 
 class ProcessPool implements ProcessPoolInterface
 {
+    protected bool $isClosed = false;
     protected int $numWorkers;
-    /**
-     * @var callable
-     */
     protected $invocationBuilder;
     private WorkerSelectionStrategyInterface $workerSelectionStrategy;
     private ProcessManager $processManager;
-
     /**
      * @var array<int, ChildProcessInterface>
      */
@@ -43,19 +41,22 @@ class ProcessPool implements ProcessPoolInterface
         $this->workerSelectionStrategy = $workerSelectionStrategy ?? new RoundRobinWorkerSelectionStrategy();
         $this->processManager = $processManager ?? new ProcessManager();
 
-        // star the worker process
+        // prevent zombie apocalypse
+        register_shutdown_function([$this, 'closePool']);
+
+        // start the worker processes
         for ($workerNo = 0; $workerNo < $this->numWorkers; $workerNo++) {
             $this->startWorker();
         }
     }
 
-    public function __destruct()
-    {
-        $this->killAll();
-    }
-
     private function startWorker(): ChildProcessInterface
     {
+        // closed?
+        if ($this->isClosed) {
+            throw new ProcessException('Can not start new worker as the process pool is closed.');
+        }
+
         // create process
         $process = $this->processManager->runProcess(function (...$args) {
             $this->handleMessage(...$args);
@@ -71,7 +72,7 @@ class ProcessPool implements ProcessPoolInterface
         return $process;
     }
 
-    private function handleMessage(ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess)
+    private function handleMessage(ChildProcessInterface $childProcess, ParentProcessInterface $parentProcess): void
     {
         try {
             while ($message = $parentProcess->getNextMessage()) {
@@ -79,7 +80,7 @@ class ProcessPool implements ProcessPoolInterface
                     $message->execute($this, $childProcess, $parentProcess);
                 }
             }
-        } catch (Exception $e) {
+        } catch (Exception | Throwable $e) {
             fwrite(
                 STDERR,
                 sprintf(
@@ -133,19 +134,23 @@ class ProcessPool implements ProcessPoolInterface
 
     private function getNextWorker(): ChildProcessInterface
     {
+        // if process pool is closed, we can not get a worker process
+        if ($this->isClosed) {
+            throw new ProcessException('Process pool is closed!');
+        }
+
         // get next pid to distribute load to
         $pid = $this->workerSelectionStrategy->getNextWorkerPid();
 
         // initially known process?
         $worker = $this->pool[$pid] ?? null;
         /* @var ChildProcessInterface|null $worker */
-        if ($worker === null) {
-            throw new ProcessException('Worker selection failed due to unknown PID.');
-        }
 
         // ensure the process is still running
-        if (!file_exists(sprintf("/proc/%d", $pid))) {
-            unset($this->pool[$pid]);
+        if ($worker === null || !file_exists(sprintf("/proc/%d", $pid))) {
+            if (isset($this->pool[$pid])) {
+                unset($this->pool[$pid]);
+            }
 
             // start a drop-in worker
             $worker = $this->startWorker();
@@ -164,11 +169,19 @@ class ProcessPool implements ProcessPoolInterface
         return $this->getNextWorker()->sendMessage($workerMessage);
     }
 
-    public function killAll(): void
+    public function closePool(): void
     {
+        // already closed?
+        if ($this->isClosed) {
+            return;
+        }
+
+        // close now
+        $this->isClosed = true;
         foreach ($this->pool as $pid => $worker) {
             $worker->kill();
             unset($this->pool[$pid], $worker);
         }
+        $this->processManager->wait();
     }
 }
