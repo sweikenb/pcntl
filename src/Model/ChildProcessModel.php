@@ -8,6 +8,6 @@ class ChildProcessModel extends AbstractProcessModel implements ChildProcessInte
 {
     public function kill(): void
     {
-        @posix_kill($this->getId(), SIGKILL);
+        posix_kill($this->getId(), SIGKILL);
     }
 }

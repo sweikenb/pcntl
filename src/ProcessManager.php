@@ -2,37 +2,34 @@
 
 namespace Sweikenb\Library\Pcntl;
 
+use Exception;
 use Sweikenb\Library\Pcntl\Api\ChildProcessInterface;
 use Sweikenb\Library\Pcntl\Api\ParentProcessInterface;
 use Sweikenb\Library\Pcntl\Api\ProcessFactoryInterface;
 use Sweikenb\Library\Pcntl\Api\ProcessManagerInterface;
-use Sweikenb\Library\Pcntl\Event\ProcessManagerEvent;
 use Sweikenb\Library\Pcntl\Exception\ProcessException;
 use Sweikenb\Library\Pcntl\Factory\ProcessFactory;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Throwable;
 
 class ProcessManager implements ProcessManagerInterface
 {
-    const EVENT_FORK_FAILED = 'process.manager.fork.failed';
-    const EVENT_CHILD_CREATED = 'process.manager.child.created';
-    const EVENT_CHILD_EXIT = 'process.manager.child.exit';
-    const EVENT_CHILD_SEND_KILL = 'process.manager.child.send.kill';
-
     const PROPAGATE_SIGNALS = [
         SIGTERM,
         SIGHUP,
-        SIGUSR1,
         SIGALRM,
+        SIGUSR1,
+        SIGUSR2
     ];
-
-    private ?EventDispatcherInterface $eventDispatcher = null;
     private ProcessFactoryInterface $processFactory;
     private ParentProcessInterface $mainProcess;
-
     /**
      * @var array<int, ChildProcessInterface>
      */
     private array $childProcesses = [];
+    /**
+     * @var array<int, int>
+     */
+    private array $earlyExitChildQueue = [];
     private bool $isChildProcess = false;
 
     public function __construct(
@@ -51,8 +48,11 @@ class ProcessManager implements ProcessManagerInterface
             ? self::PROPAGATE_SIGNALS
             : $propagateSignals;
 
+        // register a signale queue for early exit children
+        pcntl_async_signals(false);
+        pcntl_signal(SIGCHLD, [$this, "childEarlyExitQueue"]);
+
         // register the signal-handler for each signal that should be handled
-        pcntl_async_signals(true);
         foreach ($propagateSignals as $handleSignal) {
             pcntl_signal(
                 $handleSignal,
@@ -72,11 +72,13 @@ class ProcessManager implements ProcessManagerInterface
                 } else {
                     if (!empty($this->childProcesses)) {
                         foreach ($this->childProcesses as $childProcess) {
-                            echo sprintf(
-                                "[PCNTL ProcessManager] Forcing child process exit for pid %s\n",
-                                $childProcess->getId()
+                            fwrite(
+                                STDERR,
+                                sprintf(
+                                    "[PCNTL ProcessManager] Forcing child process exit for pid %s\n",
+                                    $childProcess->getId()
+                                )
                             );
-                            $this->dispatchEvent(self::EVENT_CHILD_SEND_KILL, $childProcess->getId());
                             @posix_kill($childProcess->getId(), SIGKILL);
                         }
                         $this->wait();
@@ -89,16 +91,12 @@ class ProcessManager implements ProcessManagerInterface
         );
     }
 
-    public function setEventDispatcher(EventDispatcherInterface $eventDispatcher): void
+    public function childEarlyExitQueue(): void
     {
-        $this->eventDispatcher = $eventDispatcher;
-    }
-
-    private function dispatchEvent(string $name, ?int $pid = null): void
-    {
-        if ($this->eventDispatcher) {
-            $event = new ProcessManagerEvent($name, $pid);
-            $this->eventDispatcher->dispatch($event, $name);
+        if (!$this->isChildProcess) {
+            while (($pid = pcntl_waitpid(-1, $status, WNOHANG)) > 0) {
+                $this->earlyExitChildQueue[$pid] = [$pid, pcntl_wexitstatus($status)];
+            }
         }
     }
 
@@ -125,7 +123,6 @@ class ProcessManager implements ProcessManagerInterface
 
         // error
         if ($pid < 0) {
-            $this->dispatchEvent(self::EVENT_FORK_FAILED);
             throw new ProcessException('Forking failed.');
         }
 
@@ -134,8 +131,6 @@ class ProcessManager implements ProcessManagerInterface
             @socket_close($ipc[0]);
             $childProcess = $this->processFactory->createChildProcess($pid, $ipc[1]);
             $this->childProcesses[$pid] = $childProcess;
-            $this->dispatchEvent(self::EVENT_CHILD_CREATED, $pid);
-
             return $childProcess;
         }
 
@@ -144,33 +139,47 @@ class ProcessManager implements ProcessManagerInterface
             @socket_close($ipc[1]);
             $this->childProcesses = [];
             $this->isChildProcess = true;
-            call_user_func(
-                $callback,
-                $this->processFactory->createChildProcess(posix_getpid(), null),
-                $this->getMainProcess()->setIpcSocket($ipc[0])
+            $success = false !== call_user_func(
+                    $callback,
+                    $this->processFactory->createChildProcess(posix_getpid(), null),
+                    $this->getMainProcess()->setIpcSocket($ipc[0])
+                );
+        } catch (Exception | Throwable $e) {
+            $success = false;
+            fwrite(
+                STDERR,
+                sprintf("[PCNTL ProcessManager] Child process exception: %s\n", $e->getMessage())
             );
         } finally {
-            exit(0);
+            exit($success ? 0 : 1);
         }
     }
 
-    public function wait(?callable $callback = null): ProcessManagerInterface
+    public function wait(?callable $callback = null): void
     {
-        if (!$this->isChildProcess) {
-            while (!empty($this->childProcesses)) {
-                $pid = pcntl_wait($status);
+        if ($this->isChildProcess) {
+            return;
+        }
+        $handleChildExit = function (int $pid, int $status) use ($callback): void {
+            if ($pid > 0) {
                 if (isset($this->childProcesses[$pid])) {
                     unset($this->childProcesses[$pid]);
-
-                    // dispatch event and trigger callback if present
-                    $this->dispatchEvent(self::EVENT_CHILD_EXIT, $pid);
-                    if (null !== $callback) {
-                        call_user_func($callback, $status, $pid);
-                    }
+                }
+                if (isset($this->earlyExitChildQueue[$pid])) {
+                    unset($this->earlyExitChildQueue[$pid]);
+                }
+                if (null !== $callback) {
+                    call_user_func($callback, $status, $pid);
                 }
             }
+        };
+        while (!empty($this->earlyExitChildQueue)) {
+            [$pid, $status] = current($this->earlyExitChildQueue);
+            $handleChildExit($pid, $status);
         }
-
-        return $this;
+        while (!empty($this->childProcesses)) {
+            $pid = pcntl_wait($status);
+            $handleChildExit($pid, $status);
+        }
     }
 }
