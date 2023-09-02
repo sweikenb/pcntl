@@ -30,34 +30,6 @@ the `wait()` method automatically at the end of the script. If you do not want t
 first argument to the constructor to disable the shutdown handler. If you disable this feature, the process manager will
 force a child termination even if they aren't finished yet and exits with status-code `125`.
 
-## Event Dispatcher Support
-
-This library supports the event dispatcher component of Symfony. You can inject the event-listener to
-the `ProcessManager` to dispatch events during program runtime.
-
-**Please note that events will only be dispatched for the parent/main process.**
-
-```php
-$eventManager = new EventDispatcher();
-$eventManager->addListener(ProcessManager::EVENT_CHILD_CREATED, function (ProcessManagerEvent $event) {
-    echo sprintf("Child created: %d\n", $event->getProcessId());
-});
-
-$pm = new ProcessManager();
-$pm->setEventDispatcher($eventManager);
-
-// ...
-```
-
-The following events are thrown:
-
-| Event                           | Description                                |
-|---------------------------------|--------------------------------------------|
-| process.manager.fork.failed     | Forking of the process failed.             |
-| process.manager.child.created   | Fork was created successfully.             |
-| process.manager.child.exit      | A child has exited.                        |
-| process.manager.child.send.kill | A kill signal was sent to a child process. |
-
 ## Inter Process Communication
 
 You can send data between the parent and child process using messages.
@@ -119,7 +91,7 @@ for($i = 0; $i < 100; $i++) {
 
 // wait and cleanup
 sleep(5);
-$pool->killAll();
+$pool->closePool();
 ```
 
 ## Example
@@ -184,4 +156,4 @@ D
 --> All Work done!
 ```
 
-More examples including the `EventDispatcher` can be found in the [example](./example) folder.
+More examples can be found in the [example](./example) folder.

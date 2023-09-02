@@ -24,5 +24,5 @@ interface ProcessManagerInterface
      *
      * Only works in the parent-process.
      */
-    public function wait(?callable $callback = null): ProcessManagerInterface;
+    public function wait(?callable $callback = null): void;
 }

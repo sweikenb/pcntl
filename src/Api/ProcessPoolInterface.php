@@ -10,5 +10,5 @@ interface ProcessPoolInterface
 
     public function sendMessage(WorkerMessageInterface $workerMessage): bool;
 
-    public function killAll(): void;
+    public function closePool(): void;
 }
