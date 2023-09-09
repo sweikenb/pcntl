@@ -2,6 +2,8 @@
 
 Simple and easy to use process manager for PHP based on default PCNTL and POSIX functions.
 
+Please also have a look into the [CHANGELOG](CHANGELOG.md) for latest updates and release information .
+
 ## Installation
 
 You can install this library by [composer](https://getcomposer.org/):
