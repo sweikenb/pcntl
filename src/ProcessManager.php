@@ -160,7 +160,7 @@ class ProcessManager implements ProcessManagerInterface
         if ($this->isChildProcess) {
             return;
         }
-        $handleChildExit = function (int $pid, int $status) use ($callback): void {
+        $handleChildExit = function (int $pid, int $status) use ($callback): bool {
             if ($pid > 0) {
                 if (isset($this->childProcesses[$pid])) {
                     unset($this->childProcesses[$pid]);
@@ -168,18 +168,26 @@ class ProcessManager implements ProcessManagerInterface
                 if (isset($this->earlyExitChildQueue[$pid])) {
                     unset($this->earlyExitChildQueue[$pid]);
                 }
-                if (null !== $callback) {
-                    call_user_func($callback, $status, $pid);
+                if (null !== $callback && call_user_func($callback, $status, $pid) === false) {
+                    return false;
                 }
             }
+            return true;
         };
+
+        // run the callback for all early exit children no matter what
+        $waitForMoreToExit = true;
         while (!empty($this->earlyExitChildQueue)) {
             [$pid, $status] = current($this->earlyExitChildQueue);
-            $handleChildExit($pid, $status);
+            $waitForMoreToExit = $waitForMoreToExit && $handleChildExit($pid, $status);
         }
-        while (!empty($this->childProcesses)) {
+
+        // only wait for the regular children if desired
+        while ($waitForMoreToExit && !empty($this->childProcesses)) {
             $pid = pcntl_wait($status);
-            $handleChildExit($pid, $status);
+            if (!$handleChildExit($pid, $status)) {
+                return;
+            }
         }
     }
 }

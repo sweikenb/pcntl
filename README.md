@@ -4,6 +4,19 @@ Simple and easy to use process manager for PHP based on default PCNTL and POSIX 
 
 Please also have a look into the [CHANGELOG](CHANGELOG.md) for latest updates and release information .
 
+**License**: [MIT](LICENSE.txt)
+
+**Topics**
+
+- [Installation](#installation)
+- [Basic Usage](#usage)
+- [IPC Inter Process Communication](#inter-process-communication)
+- [Pool Processing](#process-pool--worker-processes)
+- [Queued Processing](#process-queue)
+- [Examples](#basic-example)
+
+* * *
+
 ## Installation
 
 You can install this library by [composer](https://getcomposer.org/):
@@ -96,7 +109,34 @@ sleep(5);
 $pool->closePool();
 ```
 
-## Example
+## Process Queue
+
+In case you want to work with dynamic callbacks instead of a process-pool, which will require predefined worker, you can
+use the `ProcessQueue`. This queue limits the number of threads that will be forked and handles the return-management
+for you.
+
+```php
+<?php
+
+use Sweikenb\Library\Pcntl\Api\ChildProcessInterface;
+use Sweikenb\Library\Pcntl\Api\ParentProcessInterface;
+use Sweikenb\Library\Pcntl\ProcessQueue;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$maxNumberOfThreadsToRunParallel = 4;
+
+$queue = new ProcessQueue($maxNumberOfThreadsToRunParallel);
+
+for ($i = 1; $i <= 50; $i++) {
+    $queue->addToQueue(function (ChildProcessInterface $child, ParentProcessInterface $parent) use ($i) {
+        sleep(mt_rand(1, 3));
+        fwrite(STDOUT, sprintf("Queued thread %d processed message no. %d\n", $child->getId(), $i));
+    });
+}
+```
+
+# Basic Example
 
 ```php
 <?php

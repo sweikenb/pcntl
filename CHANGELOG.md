@@ -1,5 +1,19 @@
 # Changelog
 
+## Release [v5.0.0](https://github.com/sweikenb/pcntl/releases/tag/v5.0.0)
+
+**Features**
+
+- `ProcessQueue` added as more flexible alternative to `ProcessPool` but without pre-created pool workers
+
+**Breaking Changes**
+
+- The return value of the optional `ProcessManager::wait`-callback is now used to determine if the method should
+  continue to wait for further children to exit. If a value other than explicitly `false` is returned, it will continue
+  to wait.
+
+* * *
+
 ## Release [v4.0.0](https://github.com/sweikenb/pcntl/releases/tag/v4.0.0)
 
 **Plan for future releases**
@@ -16,5 +30,5 @@
 
 - PHP v8.2 as minimum requirement
 - Due to incompatibility, this library DOES NOT work if the **grpc** PHP-extension is installed
-- Removal of the optional EventDispatcher
-- Some methods of the PoolManager and ProcessManager has been renamed
+- Removal of the optional `EventDispatcher`
+- Some methods of the `ProcessPool` and `ProcessManager` has been renamed
