@@ -2,6 +2,8 @@
 
 Simple and easy to use thread-based process manager for PHP based on default PCNTL and POSIX functions.
 
+![Build status](https://github.com/sweikenb/pcntl/actions/workflows/phpunit.yml/badge.svg)
+
 **Further information:**
 
 - [Docs](docs/index.md)
