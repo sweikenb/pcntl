@@ -7,6 +7,7 @@ use Sweikenb\Library\Pcntl\Api\ChildProcessInterface;
 use Sweikenb\Library\Pcntl\Api\ParentProcessInterface;
 use Sweikenb\Library\Pcntl\Api\ProcessFactoryInterface;
 use Sweikenb\Library\Pcntl\Api\ProcessManagerInterface;
+use Sweikenb\Library\Pcntl\Api\ProcessOutputInterface;
 use Sweikenb\Library\Pcntl\Exception\ProcessException;
 use Sweikenb\Library\Pcntl\Factory\ProcessFactory;
 use Throwable;
@@ -21,6 +22,7 @@ class ProcessManager implements ProcessManagerInterface
         SIGUSR2
     ];
     private ProcessFactoryInterface $processFactory;
+    private ProcessOutputInterface $processOutput;
     private ParentProcessInterface $mainProcess;
     /**
      * @var array<int, ChildProcessInterface>
@@ -31,14 +33,24 @@ class ProcessManager implements ProcessManagerInterface
      */
     private array $earlyExitChildQueue = [];
     private bool $isChildProcess = false;
+    /**
+     * @var array<int, callable>
+     */
+    private array $onThreadCreated = [];
+    /**
+     * @var array<int, callable>
+     */
+    private array $onThreadExit = [];
 
     public function __construct(
         bool $autoWait = true,
         array $propagateSignals = null,
-        ?ProcessFactoryInterface $processFactory = null
+        ?ProcessFactoryInterface $processFactory = null,
+        ?ProcessOutputInterface $processOutput = null
     ) {
-        // make sure we have a proper factory, if non is provided, use the one that comes with the library
+        // make sure we have a proper factory and output, if non is provided, use the one that comes with the library
         $this->processFactory = $processFactory ?? new ProcessFactory();
+        $this->processOutput = $processOutput ?? new ProcessOutput();
 
         // create an instance for the current (parent) process
         $this->mainProcess = $this->processFactory->createParentProcess(posix_getpid(), null);
@@ -72,8 +84,7 @@ class ProcessManager implements ProcessManagerInterface
                 } else {
                     if (!empty($this->childProcesses)) {
                         foreach ($this->childProcesses as $childProcess) {
-                            fwrite(
-                                STDERR,
+                            $this->processOutput->stderr(
                                 sprintf(
                                     "[PCNTL ProcessManager] Forcing child process exit for pid %s\n",
                                     $childProcess->getId()
@@ -105,7 +116,7 @@ class ProcessManager implements ProcessManagerInterface
         return $this->mainProcess;
     }
 
-    public function runProcess(callable $callback): ChildProcessInterface
+    public function runProcess(callable $callback, ?ProcessOutputInterface $output = null): ChildProcessInterface
     {
         // multi-level process-nesting is not supported (and not recommended!)
         if ($this->isChildProcess) {
@@ -131,6 +142,9 @@ class ProcessManager implements ProcessManagerInterface
             @socket_close($ipc[0]);
             $childProcess = $this->processFactory->createChildProcess($pid, $ipc[1]);
             $this->childProcesses[$pid] = $childProcess;
+            foreach ($this->onThreadCreated as $callback) {
+                call_user_func($callback, $childProcess);
+            }
             return $childProcess;
         }
 
@@ -139,15 +153,16 @@ class ProcessManager implements ProcessManagerInterface
             @socket_close($ipc[1]);
             $this->childProcesses = [];
             $this->isChildProcess = true;
+            $this->processOutput = $output ?? $this->processOutput;
             $success = false !== call_user_func(
                     $callback,
                     $this->processFactory->createChildProcess(posix_getpid(), null),
-                    $this->getMainProcess()->setIpcSocket($ipc[0])
+                    $this->getMainProcess()->setIpcSocket($ipc[0]),
+                    $this->processOutput
                 );
         } catch (Exception | Throwable $e) {
             $success = false;
-            fwrite(
-                STDERR,
+            $this->processOutput->stderr(
                 sprintf("[PCNTL ProcessManager] Child process exception: %s\n", $e->getMessage())
             );
         } finally {
@@ -160,7 +175,14 @@ class ProcessManager implements ProcessManagerInterface
         if ($this->isChildProcess) {
             return;
         }
-        $handleChildExit = function (int $pid, int $status) use ($callback): bool {
+
+        $callbackStack = $this->onThreadExit;
+        if ($callback) {
+            array_unshift($callbackStack, $callback);
+        }
+
+        $handleChildExit = function (int $pid, int $status) use ($callbackStack): bool {
+            $continueWait = true;
             if ($pid > 0) {
                 if (isset($this->childProcesses[$pid])) {
                     unset($this->childProcesses[$pid]);
@@ -168,11 +190,13 @@ class ProcessManager implements ProcessManagerInterface
                 if (isset($this->earlyExitChildQueue[$pid])) {
                     unset($this->earlyExitChildQueue[$pid]);
                 }
-                if (null !== $callback && call_user_func($callback, $status, $pid) === false) {
-                    return false;
+                foreach ($callbackStack as $callback) {
+                    if (call_user_func($callback, $status, $pid) === false) {
+                        $continueWait = false;
+                    }
                 }
             }
-            return true;
+            return $continueWait;
         };
 
         // run the callback for all early exit children no matter what
@@ -189,5 +213,17 @@ class ProcessManager implements ProcessManagerInterface
                 return;
             }
         }
+    }
+
+    public function onThreadCreate(callable $callback): self
+    {
+        $this->onThreadCreated[] = $callback;
+        return $this;
+    }
+
+    public function onThreadExit(callable $callback): self
+    {
+        $this->onThreadExit[] = $callback;
+        return $this;
     }
 }
