@@ -8,7 +8,11 @@
 - [Process Queue](features/process-queue.md)
 - [Inter Process Communication (IPC)](features/ipc.md)
 
-# Examples
+# Troubleshoot
+
+- [Common Pitfalls](common-pitfalls-and-workarounds.md)
+
+# Real-World Examples
 
 - [Async Workloads](examples/async-workloads.md)
 - [Queued Parallel-Processing](examples/queued-processing.md)
