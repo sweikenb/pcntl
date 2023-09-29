@@ -1,0 +1,6 @@
+[book]
+authors = ["Simon Schröer and Contributors"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Documentation"
