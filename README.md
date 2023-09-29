@@ -6,7 +6,7 @@ Simple and easy to use thread-based process manager for PHP based on default PCN
 
 **Further information:**
 
-- [Docs](docs/index.md)
+- [Docs](https://sweikenb.github.io/pcntl/)
 - [Changelog](CHANGELOG.md)
 - [MIT License](LICENSE.txt)
 
