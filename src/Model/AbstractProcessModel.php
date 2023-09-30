@@ -47,8 +47,16 @@ abstract class AbstractProcessModel implements ProcessInterface
         if ($socket) {
             $buffer = serialize($message);
             $buffer = sprintf("%s#%s", strlen($buffer), $buffer);
-            if (socket_write($socket, $buffer, strlen($buffer)) === false) {
-                throw new ProcessException(socket_strerror(socket_last_error($socket)));
+            while (($bufferLength = strlen($buffer)) > 0) {
+                $written = socket_write($socket, $buffer, strlen($buffer));
+                if ($written === false) {
+                    throw new ProcessException(socket_strerror(socket_last_error($socket)));
+                }
+                if ($written < $bufferLength) {
+                    $buffer = substr($buffer, $written);
+                } else {
+                    $buffer = '';
+                }
             }
             return true;
         }

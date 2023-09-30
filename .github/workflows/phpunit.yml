@@ -1,0 +1,43 @@
+name: PHPUnit Tests
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  phpunit:
+    name: PHPUnit
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version:
+          - "8.2"
+        dependency-versions:
+          - "lowest"
+          - "highest"
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: pcntl, posix, sockets
+          coverage: none
+
+      - name: Install composer dependencies
+        uses: ramsey/composer-install@v2
+        with:
+          dependency-versions: ${{ matrix.dependency-versions }}
+
+      - name: Run test-suite
+        run: composer run-script phpunit
