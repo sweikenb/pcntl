@@ -10,7 +10,8 @@ use Sweikenb\Library\Pcntl\ProcessQueue;
 
 require __DIR__ . '/vendor/autoload.php';
 
-// only 4 threads will be forked and further callbacks must wait until free slots are available
+// only 4 threads will be forked and further callbacks must wait
+// until free slots are available
 $maxThreads = 4;
 
 $queue = new ProcessQueue($maxThreads);

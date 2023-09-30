@@ -10,7 +10,7 @@ the copied memory still belong to the main thread and when accessing them it wil
 
 Fortunately, there are some simple workarounds:
 
-1. Do not open any connection of pointer before you fork your process _(easy enough)_
+1. Do not open any connection or pointer before you fork your process _(easy enough)_
 2. If you need to open a connection or resource, close it and create a new instance inside the fork:
 
 ```php
