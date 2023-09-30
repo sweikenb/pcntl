@@ -1,5 +1,24 @@
 # Changelog
 
+## Release [v6.0.0](https://github.com/sweikenb/pcntl/releases/tag/v6.0.0)
+
+**Bugfixes**
+
+- Sending IPC messages will now honor the returned bytes of the written buffer correctly
+
+- **Features**
+
+- `ProcessOutput` allows to modify the console output beside the default `STDOUT` and `STDERR`
+- Unit and functional tests added using PHPUnit and GitHub actions
+- Dedicated documentation added with static rendering using [mdBook](https://rust-lang.github.io/mdBook/) and GitHub
+  actions
+
+**Breaking Changes**
+
+- `ProcessPool` has been removed in favor of the more simplistic `ProcessQueue` approach
+
+* * *
+
 ## Release [v5.0.0](https://github.com/sweikenb/pcntl/releases/tag/v5.0.0)
 
 **Features**
