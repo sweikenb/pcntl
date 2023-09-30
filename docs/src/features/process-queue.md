@@ -27,7 +27,3 @@ for ($i = 0; $i < 100; $i++) {
 - `$processManager`
     - instance of the process manager to be used
     - default: `Sweikenb\Library\Pcntl\ProcessManager`
-
-## Further Examples
-
-You can find some real-world examples [here](../examples/queued-processing.md).

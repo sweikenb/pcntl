@@ -140,7 +140,3 @@ Please note that the callback of the `wait()` method gets called BEFORE the life
 - `$processOutput`
     - output instance that should be used as proxy for writing data to `STDOUT` and `STDERR`
     - default: `Sweikenb\Library\Pcntl\ProcessOutput`
-
-## Further Examples
-
-You can find some real-world examples [here](../examples/async-workloads.md).

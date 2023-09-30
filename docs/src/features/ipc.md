@@ -69,7 +69,3 @@ class Sweikenb\Library\Pcntl\Model\Ipc\MessageModel#14 (2) {
 
 Process finished with exit code 0
 ```
-
-## Further Examples
-
-You can find some real-world examples [here](../examples/ipc-examples.md).
