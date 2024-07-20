@@ -1,4 +1,4 @@
-<?php declare(strict_types=1);
+<?php declare(strict_types=1, ticks=1);
 
 namespace Sweikenb\Library\Pcntl;
 
@@ -15,11 +15,12 @@ use Throwable;
 class ProcessManager implements ProcessManagerInterface
 {
     const PROPAGATE_SIGNALS = [
-        SIGTERM,
-        SIGHUP,
-        SIGALRM,
-        SIGUSR1,
-        SIGUSR2
+        SIGTERM,  // exit request
+        SIGINT,   // ctrl + c
+        SIGHUP,   // reload config
+        SIGALRM,  // alarm
+        SIGUSR1,  // custom 1
+        SIGUSR2,  // custom 2
     ];
     private ProcessFactoryInterface $processFactory;
     private ProcessOutputInterface $processOutput;
@@ -29,9 +30,9 @@ class ProcessManager implements ProcessManagerInterface
      */
     private array $childProcesses = [];
     /**
-     * @var array<int, int>
+     * @var int[]
      */
-    private array $earlyExitChildQueue = [];
+    private array $childExitQueue = [];
     private bool $isChildProcess = false;
     /**
      * @var array<int, callable>
@@ -60,20 +61,12 @@ class ProcessManager implements ProcessManagerInterface
             ? self::PROPAGATE_SIGNALS
             : $propagateSignals;
 
-        // register a signale queue for early exit children
-        pcntl_async_signals(false);
-        pcntl_signal(SIGCHLD, [$this, "childEarlyExitQueue"]);
-
         // register the signal-handler for each signal that should be handled
-        foreach ($propagateSignals as $handleSignal) {
-            pcntl_signal(
-                $handleSignal,
-                function (int $dispatchSignal) {
-                    foreach ($this->childProcesses as $childProcess) {
-                        @posix_kill($childProcess->getId(), $dispatchSignal);
-                    }
-                }
-            );
+        // we need to make sure we handle early child exists too, so add this signal no matter what
+        $propagateSignals[] = SIGCHLD;
+        pcntl_async_signals(false);
+        foreach (array_unique($propagateSignals) as $handleSignal) {
+            pcntl_signal($handleSignal, [$this, 'handleSignal']);
         }
 
         // prevent zombie apocalypse
@@ -81,33 +74,45 @@ class ProcessManager implements ProcessManagerInterface
             function () use ($autoWait) {
                 if ($autoWait) {
                     $this->wait();
-                } else {
-                    if (!empty($this->childProcesses)) {
-                        foreach ($this->childProcesses as $childProcess) {
-                            $this->processOutput->stderr(
-                                sprintf(
-                                    "[PCNTL ProcessManager] Forcing child process exit for pid %s\n",
-                                    $childProcess->getId()
-                                )
-                            );
-                            @posix_kill($childProcess->getId(), SIGKILL);
-                        }
-                        $this->wait();
-
-                        // In case we had to force a child kill, exit with the exit code 125 (operation canceled)
-                        exit(125);
-                    }
+                }
+                if (!empty($this->childProcesses)) {
+                    $this->sendSignalToChildren(
+                        SIGKILL,
+                        fn(ChildProcessInterface $childProcess) => $this->processOutput->stderr(
+                            sprintf(
+                                "[PCNTL ProcessManager] Forcing child process exit for pid %s\n",
+                                $childProcess->getId()
+                            )
+                        )
+                    );
+                    $this->wait();
+                    exit(1);
                 }
             }
         );
     }
 
-    public function childEarlyExitQueue(): void
+    public function handleSignal(int $signal): void
     {
-        if (!$this->isChildProcess) {
+        if ($this->isChildProcess) {
+            return;
+        }
+        if ($signal === SIGCHLD) {
             while (($pid = pcntl_waitpid(-1, $status, WNOHANG)) > 0) {
-                $this->earlyExitChildQueue[$pid] = [$pid, pcntl_wexitstatus($status)];
+                $this->childExitQueue[$pid] = pcntl_wexitstatus($status);
             }
+        } else {
+            $this->sendSignalToChildren($signal);
+        }
+    }
+
+    public function sendSignalToChildren(int $signal, ?callable $callback = null): void
+    {
+        foreach ($this->childProcesses as $childProcess) {
+            if ($callback) {
+                call_user_func($callback, $childProcess);
+            }
+            @posix_kill($childProcess->getId(), $signal);
         }
     }
 
@@ -145,6 +150,7 @@ class ProcessManager implements ProcessManagerInterface
             foreach ($this->onThreadCreated as $callback) {
                 call_user_func($callback, $childProcess);
             }
+
             return $childProcess;
         }
 
@@ -181,49 +187,35 @@ class ProcessManager implements ProcessManagerInterface
             array_unshift($callbackStack, $callback);
         }
 
-        $handleChildExit = function (int $pid, int $status) use ($callbackStack): bool {
-            $continueWait = true;
-            if ($pid > 0) {
-                if (isset($this->childProcesses[$pid])) {
-                    unset($this->childProcesses[$pid]);
-                }
-                if (isset($this->earlyExitChildQueue[$pid])) {
-                    unset($this->earlyExitChildQueue[$pid]);
-                }
-                foreach ($callbackStack as $callback) {
-                    if (call_user_func($callback, $status, $pid) === false) {
-                        $continueWait = false;
+        // wait for all children to exit
+        while (!empty($this->childProcesses)) {
+            // process the exit-queue
+            foreach ($this->childExitQueue as $pid => $status) {
+                if ($pid > 0) {
+                    unset($this->childExitQueue[$pid], $this->childProcesses[$pid]);
+                    foreach ($callbackStack as $callback) {
+                        if (call_user_func($callback, $status, $pid) === false) {
+                            return;
+                        }
                     }
                 }
             }
-            return $continueWait;
-        };
-
-        // run the callback for all early exit children no matter what
-        $waitForMoreToExit = true;
-        while (!empty($this->earlyExitChildQueue)) {
-            [$pid, $status] = current($this->earlyExitChildQueue);
-            $waitForMoreToExit = $waitForMoreToExit && $handleChildExit($pid, $status);
-        }
-
-        // only wait for the regular children if desired
-        while ($waitForMoreToExit && !empty($this->childProcesses)) {
-            $pid = pcntl_wait($status);
-            if (!$handleChildExit($pid, $status)) {
-                return;
-            }
+            usleep(5000);
+            pcntl_signal_dispatch();
         }
     }
 
     public function onThreadCreate(callable $callback): self
     {
         $this->onThreadCreated[] = $callback;
+
         return $this;
     }
 
     public function onThreadExit(callable $callback): self
     {
         $this->onThreadExit[] = $callback;
+
         return $this;
     }
 }

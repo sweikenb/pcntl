@@ -18,6 +18,9 @@ $queue = new ProcessQueue($maxThreads);
 for ($i = 0; $i < 100; $i++) {
     $queue->addToQueue(fn() => sleep(3));
 }
+
+// wait until the whole queue is done
+$queue->wait();
 ```
 
 ## Settings
