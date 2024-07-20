@@ -1,12 +1,32 @@
 # Changelog
 
+## Release [v7.0.0](https://github.com/sweikenb/pcntl/releases/tag/v7.0.0)
+
+**Bugfixes**
+
+- Proper signal handling and propagation #11
+
+**Features**
+
+- Introduced a `wait()`-function for the `ProcessQueue` itself which should be used when working with queues instead
+  of using the `wait()` method of the `ProcessManager` itself.
+- Adding PHP 8.3 support to phpunit test-matrix
+
+**Breaking Changes**
+
+- NOTE: The POSIX signal handling fix might affect the order in which callbacks will be called.
+  For the most part, this should not change the functionality of your application, but just to make sure nothing breaks
+  unexpectedly, this is the reason for the major version bump instead of just a feature-release.
+
+* * *
+
 ## Release [v6.0.0](https://github.com/sweikenb/pcntl/releases/tag/v6.0.0)
 
 **Bugfixes**
 
 - Sending IPC messages will now honor the returned bytes of the written buffer correctly
 
-- **Features**
+**Features**
 
 - `ProcessOutput` allows to modify the console output beside the default `STDOUT` and `STDERR`
 - Unit and functional tests added using PHPUnit and GitHub actions

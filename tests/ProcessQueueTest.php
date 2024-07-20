@@ -8,27 +8,32 @@ use Sweikenb\Library\Pcntl\ProcessQueue;
 
 class ProcessQueueTest extends TestCase
 {
+    const TEST_MAX_THREADS = 4;
+
     /**
      * @covers \Sweikenb\Library\Pcntl\ProcessQueue::addToQueue
      */
     public function testAddToQueue(): void
     {
-        $active = 0;
-        $maxThreads = 4;
-
         $pm = new ProcessManager();
-        $pm->onThreadExit(function () use ($maxThreads, &$active) {
-            $active--;
-            $this->assertLessThanOrEqual($maxThreads, $active);
+        $queue = new ProcessQueue(self::TEST_MAX_THREADS, $pm);
+
+        $pm->onThreadCreate(function () use ($queue) {
+            $this->assertLessThanOrEqual(self::TEST_MAX_THREADS, $queue->getThreadCounter());
+        });
+        $pm->onThreadExit(function () use ($queue) {
+            $this->assertLessThanOrEqual(self::TEST_MAX_THREADS, $queue->getThreadCounter());
         });
 
-        $queue = new ProcessQueue($maxThreads, $pm);
         for ($i = 0; $i < 20; $i++) {
-            $active++;
             $queue->addToQueue(fn() => 'test');
         }
-        $pm->wait(function () use ($maxThreads, &$active) {
-            $this->assertLessThanOrEqual($maxThreads, $active);
+
+        $queue->wait(function () use ($queue) {
+            $this->assertLessThanOrEqual(self::TEST_MAX_THREADS, $queue->getThreadCounter());
         });
+
+        $this->assertSame(self::TEST_MAX_THREADS, $queue->getMaxThreads());
+        $this->assertSame(0, $queue->getThreadCounter());
     }
 }

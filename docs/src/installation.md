@@ -6,6 +6,11 @@ Install the latest version using [composer](https://getcomposer.org/):
 composer require sweikenb/pcntl
 ```
 
+## Changelog
+
+Please consult the [CHANGELOG.md](https://github.com/sweikenb/pcntl/blob/main/CHANGELOG.md) for latest update
+information.
+
 ## System Requirements
 
 This library requires at least **PHP v8.2** with the following extensions enabled:

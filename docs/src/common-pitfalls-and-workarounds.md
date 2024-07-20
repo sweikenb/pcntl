@@ -30,7 +30,7 @@ $results = $connection->getReults();
 $connection->close();
 foreach ($results as $result) {
     $pm->runProcess(function () use ($result) {
-        // close connection
+        // re-open connection
         $connection = new Connection();
 
         // TODO process data

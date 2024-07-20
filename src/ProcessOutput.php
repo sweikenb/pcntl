@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1, ticks=1);
 
 namespace Sweikenb\Library\Pcntl;
 

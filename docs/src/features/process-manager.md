@@ -133,7 +133,14 @@ Please note that the callback of the `wait()` method gets called BEFORE the life
     - default: `true` _RECOMMENDED!_
 - `$propagateSignals`
     - list of signals that should be propagated to the child-processes
-    - default: [`SIGTERM`, `SIGHUP`, `SIGALRM`, `SIGUSR1`, `SIGUSR2`]
+    - default signals:
+        - `SIGTERM` graceful exit request by the system or user
+        - `SIGINT` user interrupts the execution (e.g. `ctrl` + `c` in the terminal)
+        - `SIGHUP` usually used to request a config reload
+        - `SIGALRM` usually used for timeout management
+        - `SIGUSR1` custom signal 1
+        - `SIGUSR2` custom signal 2
+    - please note that `SIGCHLD` can NOT be propagated due to how the process-manager internally handles this signal
 - `$processFactory`
     - factory instance that should be used to create the process models
     - default: `Sweikenb\Library\Pcntl\Factory\ProcessFactory`
