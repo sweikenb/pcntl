@@ -176,7 +176,7 @@ class ProcessManager implements ProcessManagerInterface
         }
     }
 
-    public function wait(?callable $callback = null): void
+    public function wait(?callable $callback = null, bool $block = true): void
     {
         if ($this->isChildProcess) {
             return;
@@ -188,14 +188,15 @@ class ProcessManager implements ProcessManagerInterface
         }
 
         // wait for all children to exit
-        while (!empty($this->childProcesses)) {
+        $wait = true;
+        while ($wait && !empty($this->childProcesses)) {
             // process the exit-queue
             foreach ($this->childExitQueue as $pid => $status) {
                 if ($pid > 0) {
                     unset($this->childExitQueue[$pid], $this->childProcesses[$pid]);
                     foreach ($callbackStack as $callback) {
                         if (call_user_func($callback, $status, $pid) === false) {
-                            return;
+                            $block = false;
                         }
                     }
                 }
@@ -203,6 +204,9 @@ class ProcessManager implements ProcessManagerInterface
 
             // unblock the system and dispatch queued signals
             $this->unblock();
+
+            // continue to wait?
+            $wait = $block;
         }
     }
 

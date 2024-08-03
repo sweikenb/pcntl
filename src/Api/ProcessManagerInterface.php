@@ -22,12 +22,12 @@ interface ProcessManagerInterface
     /**
      * By default, it waits until all child-processes are returned and calls the optional callback for each of them.
      * The callback will receive the return-status and the pid of the child process as arguments.
-     * If the callback returns FALSE (boolean), the method will not wait for further children to exit and returns early,
-     * any other or none value (including NULL) will continue to wait if remaining children are present.
-     * The callback will be executed before any other registered callback.
+     * If the callback returns FALSE (boolean) or $block is set to FALSE (boolean), the method will not wait for further
+     * children to exit and returns early, any other or none value (including NULL) will continue to wait if remaining
+     * children are present. The callback will be executed before any other registered callback.
      * Only works in the parent-process.
      */
-    public function wait(?callable $callback = null): void;
+    public function wait(?callable $callback = null, bool $block = true): void;
 
     /**
      * Registers a callback for when a child process gets created. Multiple callbacks can be registered.
