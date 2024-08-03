@@ -138,6 +138,7 @@ class ProcessManagerTest extends TestCase
                     $parentProcess->sendMessage(
                         $factory->create(sprintf('answer from #%d', $i), 'hello')
                     );
+
                     return $message !== null
                         && $message->getTopic() === sprintf("hello my child %d", $i)
                         && $message->getPayload() === 'hello';
@@ -161,7 +162,7 @@ class ProcessManagerTest extends TestCase
     /**
      * @covers \Sweikenb\Library\Pcntl\ProcessManager::wait
      */
-    public function testWait(): void
+    public function testWaitBlock(): void
     {
         $pm = new ProcessManager();
 
@@ -169,21 +170,72 @@ class ProcessManagerTest extends TestCase
         for ($i = 1; $i <= $numChilds; $i++) {
             $pm->runProcess(function () use ($i) {
                 usleep($i * 10);
-                return true;
             });
         }
 
         $numClosed = 0;
-        $numWaitLoops = 0;
         while ($numChilds > $numClosed) {
-            $numWaitLoops++;
             $pm->wait(function () use (&$numClosed) {
-                $numClosed++;
-                return $numClosed > 50;
+                ++$numClosed;
             });
         }
 
-        $this->assertSame(51, $numWaitLoops);
+        $this->assertSame($numChilds, $numClosed);
+    }
+
+    /**
+     * @covers \Sweikenb\Library\Pcntl\ProcessManager::wait
+     */
+    public function testWaitUnblock(): void
+    {
+        $pm = new ProcessManager();
+
+        $numChilds = 100;
+        for ($i = 1; $i <= $numChilds; $i++) {
+            $pm->runProcess(function () {
+                sleep(1);
+            });
+        }
+
+        $numClosed = 0;
+        $pm->wait(
+            function () use (&$numClosed) {
+                ++$numClosed;
+            },
+            false
+        );
+        $pm->wait();
+
+        $this->assertSame(0, $numClosed);
+    }
+
+    /**
+     * @covers \Sweikenb\Library\Pcntl\ProcessManager::wait
+     */
+    public function testWaitInlineUnblock(): void
+    {
+        $pm = new ProcessManager();
+
+        $numChilds = 100;
+        for ($i = 1; $i <= $numChilds; $i++) {
+            $pm->runProcess(function () {
+                usleep(10);
+            });
+        }
+        sleep(1);
+
+        $numClosed = 0;
+        $pm->wait(
+            function () use (&$numClosed) {
+                ++$numClosed;
+
+                return false;
+            }
+        );
+        $pm->wait();
+
+        $this->assertGreaterThan(0, $numClosed);
+        $this->assertLessThan($numChilds, $numClosed);
     }
 
     /**

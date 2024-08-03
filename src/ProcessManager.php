@@ -189,7 +189,7 @@ class ProcessManager implements ProcessManagerInterface
 
         // wait for all children to exit
         $wait = true;
-        while ($wait && !empty($this->childProcesses)) {
+        while ($wait && (!empty($this->childProcesses) || !empty($this->childExitQueue))) {
             // process the exit-queue
             foreach ($this->childExitQueue as $pid => $status) {
                 if ($pid > 0) {

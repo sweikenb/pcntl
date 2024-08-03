@@ -16,8 +16,9 @@ class PoolManager
         // create the process manager instance if not provided
         $this->pm = $processManager ?? new ProcessManager();
 
-        // register/override interrupt handler for the main-process
+        // register/override interrupt- and termination-handler for the main-process
         pcntl_signal(SIGINT, [$this, 'handleInterrupt']);
+        pcntl_signal(SIGTERM, [$this, 'handleInterrupt']);
 
         // register events
         $this->pm->onThreadCreate(function (ChildProcessInterface $process) {
@@ -34,7 +35,7 @@ class PoolManager
         $this->pm->sendSignalToChildren(SIGTERM);
     }
 
-    public function execute(int $poolSize, callable $mainLoop, callable $processLoop, ?float $killTimeout = null): int
+    public function execute(int $poolSize, callable $mainLoop, callable $processLoop, ?float $killTimeout = null): never
     {
         while (!$this->interrupted) {
             // ensure we have enough threads
@@ -65,6 +66,7 @@ class PoolManager
         // final wait until all children exited after the KILL
         $this->pm->wait();
 
-        return $status;
+        // terminate the script with the proper exit-code
+        exit($status);
     }
 }
