@@ -1,5 +1,14 @@
 # Changelog
 
+## Release [v7.1.0](https://github.com/sweikenb/pcntl/releases/tag/v7.1.0)
+
+**Features**
+
+- Introduced the `unblock()`-function to the `ProcessManager` so the process-unblock and signal dispatching can be
+  triggered externally too
+
+* * *
+
 ## Release [v7.0.0](https://github.com/sweikenb/pcntl/releases/tag/v7.0.0)
 
 **Bugfixes**

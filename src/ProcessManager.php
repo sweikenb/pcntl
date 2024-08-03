@@ -200,9 +200,16 @@ class ProcessManager implements ProcessManagerInterface
                     }
                 }
             }
-            usleep(5000);
-            pcntl_signal_dispatch();
+
+            // unblock the system and dispatch queued signals
+            $this->unblock();
         }
+    }
+
+    public function unblock(): void
+    {
+        usleep(mt_rand(50, 500));
+        pcntl_signal_dispatch();
     }
 
     public function onThreadCreate(callable $callback): self
