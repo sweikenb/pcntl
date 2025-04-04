@@ -104,6 +104,9 @@ class ProcessManager implements ProcessManagerInterface
         } else {
             $this->sendSignalToChildren($signal);
         }
+        if ($signal === SIGINT) {
+            exit(130); // ctrl + c
+        }
     }
 
     public function sendSignalToChildren(int $signal, ?callable $callback = null): void
