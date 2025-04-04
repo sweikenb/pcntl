@@ -1,5 +1,13 @@
 # Changelog
 
+## Release [v7.1.1](https://github.com/sweikenb/pcntl/releases/tag/v7.1.1)
+
+**Bugfixes**
+
+- Set proper exit-code `130` when the `SIGINT`-signal is received
+
+* * *
+
 ## Release [v7.1.0](https://github.com/sweikenb/pcntl/releases/tag/v7.1.0)
 
 **Features**
